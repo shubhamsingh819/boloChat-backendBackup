@@ -767,8 +767,8 @@ app.get("/", (req, res) => {
 
 // Start the Server
 const port = process.env.PORT || 3001;
-const host = "192.168.1.41";
+// const host = "192.168.1.41";
 
-httpServer.listen(port, host, () => {
-  console.log(`Server running at http://${host}:${port}`);
+httpServer.listen(port, () => {
+  console.log(`Server running at ${port}`);
 });
