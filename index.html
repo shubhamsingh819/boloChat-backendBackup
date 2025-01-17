@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Socket.IO Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+            margin: 0;
+        }
+
+        #form {
+            display: flex;
+            padding: 0.5rem;
+            background-color: rgba(0, 0, 0, 0.15);
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+
+        #input {
+            flex: 1;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        #input:focus {
+            outline: none;
+            border-color: #333;
+        }
+
+        #form>button {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            margin-left: 0.5rem;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        #messages {
+            list-style-type: none;
+            padding: 0;
+            margin-bottom: 4rem;
+            /* Space for input */
+        }
+
+        #messages>li {
+            padding: 0.5rem 1rem;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #messages>li:nth-child(odd) {
+            background: #efefef;
+        }
+
+        #typing {
+            font-size: 0.9rem;
+            color: #888;
+            padding: 0.5rem 1rem;
+        }
+
+        #userList {
+            padding: 1rem;
+            background: #f9f9f9;
+            list-style-type: none;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #userList>li {
+            cursor: pointer;
+            padding: 0.5rem;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #userList>li:hover {
+            background-color: #efefef;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- User List -->
+    <ul id="userList">
+        <li onclick="startChat('user2')">Chat with Vishal</li>
+        <li onclick="startChat('user3')">Chat with Santosh</li>
+        <li onclick="startChat('user4')">Chat with Arjun</li>
+    </ul>
+
+    <!-- Chat Messages -->
+    <ul id="messages" style="overflow-y: auto; max-height: 400px;"></ul>
+
+    <!-- Load More Button -->
+    <div id="loadMoreContainer" style="text-align: center; margin-top: 10px;">
+        <button id="loadMoreBtn" onclick="loadMessages()">Load More</button>
+    </div>
+
+    <!-- Chat Input Form -->
+    <form id="form">
+        <input id="input" autocomplete="off" placeholder="Type a message..." />
+        <button>Send</button>
+    </form>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <!-- Load More Button -->
+    <!-- <div id="loadMoreContainer" style="text-align: center; margin-top: 10px;">
+        <button id="loadMoreBtn" onclick="loadMessages()">Load More</button>
+    </div> -->
+
+    <script>
+        const socket = io(); // Initialize socket.io
+
+        const form = document.getElementById("form");
+        const input = document.getElementById("input");
+        const messages = document.getElementById("messages");
+        const typingDiv = document.getElementById("typing");
+        const loadMoreBtn = document.getElementById("loadMoreBtn");
+
+        let currentRoomId = null;
+        let messageOffset = 0; // To keep track of message loading position
+        // loadMessages();
+        const userId = "Shubham"; // Example sender
+
+        // Join the selected room dynamically
+        function startChat(receiverId) {
+            if (currentRoomId) {
+                socket.emit("leaveRoom", { roomId: currentRoomId }); // Leave the current room
+            }
+
+            currentRoomId = `${userId}-${receiverId}`; // Generate new roomId
+            socket.emit("joinRoom", { roomId: currentRoomId }); // Join new room
+
+            messages.innerHTML = ''; // Clear messages when switching chats
+            typingDiv.textContent = ''; // Clear typing indicator
+            messageOffset = 0; // Reset offset when switching chats
+            // loadMessages(); // Load the latest messages
+        }
+
+        // Load previous messages when the user clicks "Load More"
+        // function loadMessages() {
+        //     socket.emit("fetch chat history", { roomId: currentRoomId, offset: messageOffset });
+        // }
+
+        // Handle incoming chat messages
+        socket.on("chat message", (data) => {
+            const li = document.createElement("li");
+            li.textContent = `${data.senderId}: ${data.message}`;
+            messages.appendChild(li);
+            messages.scrollTop = messages.scrollHeight; // Scroll to bottom
+        });
+
+        // Display chat history
+        socket.on("chat history", (messagesArray) => {
+            if (messagesArray.length > 0) {
+                messagesArray.forEach((msg) => {
+                    const li = document.createElement("li");
+                    li.textContent = `${msg.senderId}: ${msg.message} (${new Date(msg.timestamp).toLocaleTimeString()})`;
+                    messages.prepend(li); // Prepend to show older messages at the top
+                });
+                messageOffset += messagesArray.length; // Update the offset
+            } else {
+                loadMoreBtn.style.display = 'none'; // Hide load more button if no more messages
+            }
+        });
+
+        // Send chat message
+        form.addEventListener("submit", (e) => {
+            e.preventDefault();
+            if (input.value.trim() && currentRoomId) {
+                socket.emit("chat message", {
+                    senderId: userId, // Sender ID
+                    receiverId: currentRoomId.split('-')[1], // Receiver ID from roomId
+                    message: input.value, // Message content
+                    roomId: currentRoomId, // The room the message is sent to
+                });
+                input.value = ""; // Clear the input after sending the message
+            }
+        });
+
+        // Typing indicator
+        input.addEventListener("input", () => {
+            if (currentRoomId) {
+                socket.emit("typing", { roomId: currentRoomId, userId });
+            }
+        });
+
+        socket.on("typing", (data) => {
+            if (data.userId !== userId) {
+                typingDiv.textContent = `${data.userId} is typing...`;
+            }
+        });
+    </script>
+
+
+</body>
+
+</html>
