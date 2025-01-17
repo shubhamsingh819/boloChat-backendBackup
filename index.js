@@ -342,7 +342,7 @@ const httpServer = createServer(app); // Create an HTTP server
 
 // CORS Configuration
 const corsOptions = {
-  origin: "http://192.168.1.41:5173", // Frontend origin
+  origin: "https://bolochatapp.netlify.app", // Frontend origin
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type", "Authorization"],
 };
@@ -352,7 +352,7 @@ app.use(express.json()); // Parse JSON request bodies
 // Socket.IO Initialization
 const io = new Server(httpServer, {
   cors: {
-    origin: "http://192.168.1.41:5173",
+    origin: "https://bolochatapp.netlify.app",
     methods: ["GET", "POST"],
   },
 });
